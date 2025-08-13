@@ -1,0 +1,94 @@
+version: '3.8'
+
+services:
+  # API Gateway
+  api-gateway:
+    build:
+      context: ./services/api-gateway
+      dockerfile: Dockerfile
+    container_name: nphies-api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - REDIS_URL=redis://redis:6379
+      - POSTGRES_URL=postgres://nphies:nphies_password@postgres:5432/nphies?sslmode=disable
+      - KAFKA_BROKERS=kafka:9092
+      - LOG_LEVEL=debug
+    depends_on:
+      - postgres
+      - redis
+      - kafka
+    volumes:
+      - ./configs/development:/etc/nphies/config
+    restart: unless-stopped
+
+  # Eligibility Service
+  eligibility-service:
+    build:
+      context: ./services/eligibility-service
+      dockerfile: Dockerfile
+    container_name: nphies-eligibility-service
+    ports:
+      - "8090:8090"
+    environment:
+      - PORT=8090
+      - REDIS_URL=redis://redis:6379
+      - POSTGRES_URL=postgres://nphies:nphies_password@postgres:5432/eligibility?sslmode=disable
+      - KAFKA_BROKERS=kafka:9092
+      - LOG_LEVEL=debug
+    depends_on:
+      - postgres
+      - redis
+      - kafka
+    volumes:
+      - ./configs/development:/etc/nphies/config
+    restart: unless-stopped
+
+  # Terminology Service
+  terminology-service:
+    build:
+      context: ./services/terminology-service
+      dockerfile: Dockerfile
+    container_name: nphies-terminology-service
+    ports:
+      - "8091:8091"
+    environment:
+      - PORT=8091
+      - REDIS_URL=redis://redis:6379
+      - POSTGRES_URL=postgres://nphies:nphies_password@postgres:5432/terminology?sslmode=disable
+      - KAFKA_BROKERS=kafka:9092
+      - LOG_LEVEL=debug
+    depends_on:
+      - postgres
+      - redis
+      - kafka
+    volumes:
+      - ./configs/development:/etc/nphies/config
+    restart: unless-stopped
+
+  # Claims Service (Java)
+  claims-service:
+    build:
+      context: ./services/claims-service
+      dockerfile: Dockerfile
+    container_name: nphies-claims-service
+    ports:
+      - "8092:8092"
+    environment:
+      - SERVER_PORT=8092
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/claims
+      - SPRING_DATASOURCE_USERNAME=nphies
+      - SPRING_DATASOURCE_PASSWORD=nphies_password
+      - SPRING_REDIS_HOST=redis
+      - SPRING_REDIS_PORT=6379
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - LOGGING_LEVEL_ROOT=INFO
+      - LOGGING_LEVEL_COM_NPHIES=DEBUG
+    depends_on:
+      - postgres
+      - redis
+      - kafka
+    volumes:
+      - ./configs/development:/etc/nphies/config
+    restart: unless-stopped
