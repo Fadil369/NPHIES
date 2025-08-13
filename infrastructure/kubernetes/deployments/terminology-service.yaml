@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: terminology-service
+  namespace: nphies-core
+  labels:
+    app: terminology-service
+    component: business
+    version: v1.0.0
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: terminology-service
+  template:
+    metadata:
+      labels:
+        app: terminology-service
+        component: business
+        version: v1.0.0
+    spec:
+      containers:
+      - name: terminology-service
+        image: nphies/terminology-service:latest
+        ports:
+        - containerPort: 8091
+          name: http
+        env:
+        - name: PORT
+          value: "8091"
+        - name: DB_HOST
+          value: "postgres-service.nphies-data.svc.cluster.local"
+        - name: DB_NAME
+          value: "nphies_terminology"
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: password
+        - name: REDIS_HOST
+          value: "redis-service.nphies-data.svc.cluster.local"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8091
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8091
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1001
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: terminology-service
+  namespace: nphies-core
+  labels:
+    app: terminology-service
+spec:
+  selector:
+    app: terminology-service
+  ports:
+  - name: http
+    port: 8091
+    targetPort: 8091
+    protocol: TCP
+  type: ClusterIP

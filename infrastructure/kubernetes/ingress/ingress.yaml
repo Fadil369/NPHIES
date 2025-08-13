@@ -1,0 +1,50 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nphies-ingress
+  namespace: nphies-core
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/rate-limit: "1000"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  tls:
+  - hosts:
+    - api.nphies.sa
+    secretName: nphies-tls
+  rules:
+  - host: api.nphies.sa
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: api-gateway-service
+            port:
+              number: 8080
+      - path: /api/v1/eligibility
+        pathType: Prefix
+        backend:
+          service:
+            name: eligibility-service
+            port:
+              number: 8090
+      - path: /api/v1/claims
+        pathType: Prefix
+        backend:
+          service:
+            name: claims-service
+            port:
+              number: 8080
+      - path: /api/v1/terminology
+        pathType: Prefix
+        backend:
+          service:
+            name: terminology-service
+            port:
+              number: 8091

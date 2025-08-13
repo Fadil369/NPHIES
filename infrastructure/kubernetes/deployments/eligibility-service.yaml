@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: eligibility-service
+  namespace: nphies-core
+  labels:
+    app: eligibility-service
+    component: business
+    version: v1.0.0
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: eligibility-service
+  template:
+    metadata:
+      labels:
+        app: eligibility-service
+        component: business
+        version: v1.0.0
+    spec:
+      containers:
+      - name: eligibility-service
+        image: nphies/eligibility-service:latest
+        ports:
+        - containerPort: 8090
+          name: http
+        - containerPort: 8091
+          name: metrics
+        env:
+        - name: PORT
+          value: "8090"
+        - name: DB_HOST
+          value: "postgres-service.nphies-data.svc.cluster.local"
+        - name: REDIS_HOST
+          value: "redis-service.nphies-data.svc.cluster.local"
+        - name: KAFKA_BROKERS
+          value: "kafka-service.nphies-data.svc.cluster.local:9092"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8090
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8090
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1001
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: eligibility-service
+  namespace: nphies-core
+  labels:
+    app: eligibility-service
+spec:
+  selector:
+    app: eligibility-service
+  ports:
+  - name: http
+    port: 8090
+    targetPort: 8090
+    protocol: TCP
+  - name: metrics
+    port: 8091
+    targetPort: 8091
+    protocol: TCP
+  type: ClusterIP
