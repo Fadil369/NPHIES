@@ -9,6 +9,7 @@ This repository contains the implementation of a unified digital healthcare insu
 The platform is built on cloud-native, event-driven microservices architecture with the following key components:
 
 ### Core Services
+
 - **API Gateway**: FHIR R4 compliant gateway with OAuth2/OIDC integration
 - **Eligibility Service**: Real-time coverage validation with sub-900ms response time
 - **Claims Service**: Comprehensive claims intake and adjudication
@@ -17,6 +18,7 @@ The platform is built on cloud-native, event-driven microservices architecture w
 - **Fraud Detection**: AI-powered fraud prevention and detection
 
 ### Infrastructure
+
 - **Event Streaming**: Apache Kafka for reliable message processing
 - **Data Layer**: PostgreSQL/CockroachDB + Redis + S3-compatible storage
 - **Security**: Zero-trust architecture with mTLS service mesh
@@ -50,6 +52,7 @@ The platform is built on cloud-native, event-driven microservices architecture w
 ## Getting Started
 
 ### Prerequisites
+
 - Kubernetes cluster
 - Apache Kafka
 - PostgreSQL/Redis
@@ -57,6 +60,7 @@ The platform is built on cloud-native, event-driven microservices architecture w
 - Helm
 
 ### Quick Start
+
 ```bash
 # Clone the repository
 git clone https://github.com/Fadil369/NPHIES.git
@@ -90,12 +94,14 @@ helm install nphies ./helm/nphies
 ## Development Phases
 
 ### Phase 1 (0-6 months) - Foundation ✨
+
 - API Gateway with FHIR R4 support
 - Event streaming infrastructure
 - Core services (Eligibility, Claims Intake, Terminology)
 - Security framework and observability
 
 ### Phase 2 (6-18 months) - Intelligence
+
 - Prior Authorization engine with ML
 - Advanced claims adjudication
 - Fraud detection system
@@ -103,6 +109,7 @@ helm install nphies ./helm/nphies
 - Payment orchestration
 
 ### Phase 3 (18-36 months) - Innovation
+
 - Digital health wallet with blockchain
 - Predictive analytics and risk stratification
 - IoT integration capabilities
