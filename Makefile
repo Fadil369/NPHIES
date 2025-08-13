@@ -1,7 +1,7 @@
 # NPHIES Platform Makefile
 
 # Variables
-DOCKER_COMPOSE = docker-compose
+DOCKER_COMPOSE = docker compose
 DOCKER_COMPOSE_DEV = $(DOCKER_COMPOSE) -f docker-compose.yml -f docker-compose.dev.yml
 GO_VERSION = 1.21
 JAVA_VERSION = 17
