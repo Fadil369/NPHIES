@@ -127,10 +127,11 @@ func setupRouter(cfg *config.Config, h *handlers.Handler, logger *logrus.Logger)
 		}
 
 		// FHIR Resources - protected endpoints
-		fhir := v1.Group("/fhir").Use(middleware.AuthMiddleware(cfg.JWT.Secret))
+		fhirGroup := v1.Group("/fhir")
+		fhirGroup.Use(middleware.AuthMiddleware(cfg.JWT.Secret))
 		{
 			// Patient endpoints
-			patients := fhir.Group("/Patient")
+			patients := fhirGroup.Group("/Patient")
 			{
 				patients.GET("", h.SearchPatients)
 				patients.POST("", h.CreatePatient)
@@ -140,7 +141,7 @@ func setupRouter(cfg *config.Config, h *handlers.Handler, logger *logrus.Logger)
 			}
 
 			// Coverage endpoints
-			coverage := fhir.Group("/Coverage")
+			coverage := fhirGroup.Group("/Coverage")
 			{
 				coverage.GET("", h.SearchCoverage)
 				coverage.POST("", h.CreateCoverage)
@@ -150,7 +151,7 @@ func setupRouter(cfg *config.Config, h *handlers.Handler, logger *logrus.Logger)
 			}
 
 			// Claim endpoints
-			claims := fhir.Group("/Claim")
+			claims := fhirGroup.Group("/Claim")
 			{
 				claims.GET("", h.SearchClaims)
 				claims.POST("", h.CreateClaim)
@@ -160,14 +161,14 @@ func setupRouter(cfg *config.Config, h *handlers.Handler, logger *logrus.Logger)
 			}
 
 			// ClaimResponse endpoints
-			claimResponses := fhir.Group("/ClaimResponse")
+			claimResponses := fhirGroup.Group("/ClaimResponse")
 			{
 				claimResponses.GET("", h.SearchClaimResponses)
 				claimResponses.GET("/:id", h.GetClaimResponse)
 			}
 
 			// Prior Authorization endpoints
-			priorAuth := fhir.Group("/CoverageEligibilityRequest")
+			priorAuth := fhirGroup.Group("/CoverageEligibilityRequest")
 			{
 				priorAuth.GET("", h.SearchPriorAuthorizations)
 				priorAuth.POST("", h.CreatePriorAuthorization)

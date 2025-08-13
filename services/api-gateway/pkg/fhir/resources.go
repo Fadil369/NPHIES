@@ -1,7 +1,5 @@
 package fhir
 
-import "time"
-
 // Base FHIR Resource structure
 type Resource struct {
 	ResourceType string `json:"resourceType"`
