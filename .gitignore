@@ -1,0 +1,115 @@
+# Operating System
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Dependency directories
+node_modules/
+vendor/
+
+# Build outputs
+dist/
+build/
+target/
+bin/
+*.jar
+*.war
+*.ear
+*.exe
+
+# Go specific
+*.mod
+*.sum
+
+# Java specific
+*.class
+*.jar
+*.war
+*.ear
+.gradle/
+build/
+
+# Python specific
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.env
+.venv
+
+# Docker
+.dockerignore
+
+# Kubernetes
+*.kubeconfig
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# Environment variables
+.env*
+!.env.example
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Coverage reports
+coverage.txt
+*.cover
+*.coverprofile
+
+# Temporary files
+tmp/
+temp/
+.tmp/
+
+# Security
+secrets/
+certs/
+*.pem
+*.key
+*.crt
+
+# Local configuration
+config/local/
+configs/local/
+
+# Test outputs
+test-results/
+coverage/
+
+# Monitoring data
+prometheus_data/
+grafana_data/
