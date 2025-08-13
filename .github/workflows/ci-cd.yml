@@ -1,0 +1,199 @@
+name: NPHIES Platform CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: nphies_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+    
+    - name: Set up Java
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+    
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+    
+    - name: Cache Maven dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+        restore-keys: |
+          ${{ runner.os }}-maven-
+    
+    - name: Test API Gateway Service
+      run: |
+        cd services/api-gateway
+        go mod tidy
+        go test -v ./...
+        go build -o api-gateway cmd/main.go
+    
+    - name: Test Eligibility Service
+      run: |
+        cd services/eligibility-service
+        go mod tidy
+        go test -v ./...
+        go build -o eligibility-service cmd/main.go
+    
+    - name: Test Terminology Service
+      run: |
+        cd services/terminology-service
+        go mod tidy
+        go test -v ./...
+        go build -o terminology-service cmd/main.go
+    
+    - name: Test Claims Service
+      run: |
+        cd services/claims-service
+        mvn clean test
+        mvn clean compile
+
+  build-and-push:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    strategy:
+      matrix:
+        service: [api-gateway, eligibility-service, claims-service, terminology-service]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.service }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+    
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./services/${{ matrix.service }}
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up kubectl
+      uses: azure/setup-kubectl@v3
+      with:
+        version: 'latest'
+    
+    - name: Configure kubectl
+      run: |
+        echo "${{ secrets.KUBE_CONFIG_DATA }}" | base64 -d > kubeconfig
+        export KUBECONFIG=kubeconfig
+    
+    - name: Deploy to Kubernetes
+      run: |
+        export KUBECONFIG=kubeconfig
+        
+        # Apply namespace and configmaps first
+        kubectl apply -f infrastructure/kubernetes/namespaces/
+        kubectl apply -f infrastructure/kubernetes/configmaps/
+        
+        # Apply services
+        kubectl apply -f infrastructure/kubernetes/deployments/
+        
+        # Apply ingress
+        kubectl apply -f infrastructure/kubernetes/ingress/
+        
+        # Wait for deployments to be ready
+        kubectl wait --for=condition=available --timeout=300s deployment/api-gateway -n nphies-core
+        kubectl wait --for=condition=available --timeout=300s deployment/eligibility-service -n nphies-core
+        kubectl wait --for=condition=available --timeout=300s deployment/claims-service -n nphies-core
+        kubectl wait --for=condition=available --timeout=300s deployment/terminology-service -n nphies-core
+
+  integration-tests:
+    needs: deploy
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Wait for services to be ready
+      run: sleep 60
+    
+    - name: Run integration tests
+      env:
+        API_GATEWAY_URL: ${{ secrets.API_GATEWAY_URL }}
+        ELIGIBILITY_SERVICE_URL: ${{ secrets.ELIGIBILITY_SERVICE_URL }}
+        CLAIMS_SERVICE_URL: ${{ secrets.CLAIMS_SERVICE_URL }}
+        TERMINOLOGY_SERVICE_URL: ${{ secrets.TERMINOLOGY_SERVICE_URL }}
+      run: |
+        chmod +x tests/integration/run-integration-tests.sh
+        tests/integration/run-integration-tests.sh
+    
+    - name: Notify on failure
+      if: failure()
+      run: |
+        echo "Integration tests failed! Rolling back deployment..."
+        # Add rollback logic here if needed

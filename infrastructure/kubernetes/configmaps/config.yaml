@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nphies-config
+  namespace: nphies-core
+data:
+  # Database configuration
+  postgres.host: "postgres-service.nphies-data.svc.cluster.local"
+  postgres.port: "5432"
+  
+  # Redis configuration
+  redis.host: "redis-service.nphies-data.svc.cluster.local"
+  redis.port: "6379"
+  
+  # Kafka configuration
+  kafka.brokers: "kafka-service.nphies-data.svc.cluster.local:9092"
+  
+  # Service discovery
+  api.gateway.url: "http://api-gateway-service.nphies-core.svc.cluster.local:8080"
+  eligibility.service.url: "http://eligibility-service.nphies-core.svc.cluster.local:8090"
+  claims.service.url: "http://claims-service.nphies-core.svc.cluster.local:8080"
+  terminology.service.url: "http://terminology-service.nphies-core.svc.cluster.local:8091"
+  
+  # Application configuration
+  log.level: "info"
+  environment: "production"
+  
+  # Rate limiting
+  rate.limit.requests: "500"
+  rate.limit.window: "60"
+  
+  # Cache configuration
+  cache.ttl: "300"
+  cache.max.size: "10000"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-credentials
+  namespace: nphies-core
+type: Opaque
+data:
+  username: cG9zdGdyZXM=  # postgres (base64)
+  password: cGFzc3dvcmQ=  # password (base64)
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: nphies-secrets
+  namespace: nphies-core
+type: Opaque
+data:
+  jwt.secret: bXktc2VjcmV0LWp3dC1rZXk=  # my-secret-jwt-key (base64)
+  encryption.key: ZW5jcnlwdGlvbi1rZXktMzItY2hhcmFjdGVycy1sb25n  # encryption-key-32-characters-long (base64)

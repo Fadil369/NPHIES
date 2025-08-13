@@ -1,0 +1,96 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: claims-service
+  namespace: nphies-core
+  labels:
+    app: claims-service
+    component: business
+    version: v1.0.0
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: claims-service
+  template:
+    metadata:
+      labels:
+        app: claims-service
+        component: business
+        version: v1.0.0
+    spec:
+      containers:
+      - name: claims-service
+        image: nphies/claims-service:latest
+        ports:
+        - containerPort: 8080
+          name: http
+        - containerPort: 8081
+          name: metrics
+        env:
+        - name: SERVER_PORT
+          value: "8080"
+        - name: SPRING_DATASOURCE_URL
+          value: "jdbc:postgresql://postgres-service.nphies-data.svc.cluster.local:5432/nphies_claims"
+        - name: SPRING_DATASOURCE_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: username
+        - name: SPRING_DATASOURCE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: password
+        - name: SPRING_DATA_REDIS_HOST
+          value: "redis-service.nphies-data.svc.cluster.local"
+        - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
+          value: "kafka-service.nphies-data.svc.cluster.local:9092"
+        - name: NPHIES_SERVICES_ELIGIBILITY_URL
+          value: "http://eligibility-service.nphies-core.svc.cluster.local:8090"
+        - name: NPHIES_SERVICES_TERMINOLOGY_URL
+          value: "http://terminology-service.nphies-core.svc.cluster.local:8091"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "200m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /api/v1/claims/health
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /api/v1/claims/health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 5
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1001
+          allowPrivilegeEscalation: false
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: claims-service
+  namespace: nphies-core
+  labels:
+    app: claims-service
+spec:
+  selector:
+    app: claims-service
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+    protocol: TCP
+  - name: metrics
+    port: 8081
+    targetPort: 8081
+    protocol: TCP
+  type: ClusterIP
