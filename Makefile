@@ -46,6 +46,10 @@ build-go: ## Build Go services
 	@cd services/api-gateway && go mod tidy && go build -o bin/api-gateway ./cmd/main.go
 	@cd services/eligibility-service && go mod tidy && go build -o bin/eligibility-service ./cmd/main.go
 	@cd services/terminology-service && go mod tidy && go build -o bin/terminology-service ./cmd/main.go
+	@cd services/wallet-service && go mod tidy && go build -o bin/wallet-service ./cmd/main.go
+	@if [ -d "services/analytics-service" ]; then \
+		cd services/analytics-service && go mod tidy && go build -o bin/analytics-service ./cmd/main.go; \
+	fi
 	@echo "$(GREEN)Go services built successfully!$(NC)"
 
 build-java: ## Build Java services
@@ -63,6 +67,10 @@ test-go: ## Run Go tests
 	@cd services/api-gateway && go test ./... -v
 	@cd services/eligibility-service && go test ./... -v
 	@cd services/terminology-service && go test ./... -v
+	@cd services/wallet-service && go test ./... -v
+	@if [ -d "services/analytics-service" ]; then \
+		cd services/analytics-service && go test ./... -v; \
+	fi
 
 test-java: ## Run Java tests
 	@echo "$(GREEN)Running Java tests...$(NC)"
