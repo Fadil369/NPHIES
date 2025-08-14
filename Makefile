@@ -50,6 +50,9 @@ build-go: ## Build Go services
 	@if [ -d "services/analytics-service" ]; then \
 		cd services/analytics-service && go mod tidy && go build -o bin/analytics-service ./cmd/main.go; \
 	fi
+	@if [ -d "services/automation-service" ]; then \
+		cd services/automation-service && go mod tidy && go build -o bin/automation-service ./cmd/main.go; \
+	fi
 	@echo "$(GREEN)Go services built successfully!$(NC)"
 
 build-java: ## Build Java services
