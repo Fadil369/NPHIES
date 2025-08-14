@@ -1,0 +1,256 @@
+name: NPHIES Platform CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: fadil369/nphies
+
+jobs:
+  # Security and Code Quality
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+    
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  # Go Services Build and Test
+  go-services:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [api-gateway, eligibility-service, terminology-service, wallet-service, analytics-service]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+    
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+    
+    - name: Download dependencies
+      working-directory: ./services/${{ matrix.service }}
+      run: go mod download
+    
+    - name: Run tests
+      working-directory: ./services/${{ matrix.service }}
+      run: go test -v ./...
+    
+    - name: Run linter
+      uses: golangci/golangci-lint-action@v3
+      with:
+        version: latest
+        working-directory: ./services/${{ matrix.service }}
+    
+    - name: Build binary
+      working-directory: ./services/${{ matrix.service }}
+      run: go build -v ./cmd/main.go
+
+  # Java Services Build and Test
+  java-services:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [claims-service]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+    
+    - name: Cache Maven packages
+      uses: actions/cache@v3
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-m2
+    
+    - name: Run tests
+      working-directory: ./services/${{ matrix.service }}
+      run: ./mvnw test
+    
+    - name: Build with Maven
+      working-directory: ./services/${{ matrix.service }}
+      run: ./mvnw clean package -DskipTests
+
+  # Docker Image Build and Push
+  docker-build:
+    needs: [go-services, java-services]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    strategy:
+      matrix:
+        service: [api-gateway, eligibility-service, terminology-service, wallet-service, analytics-service, claims-service]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-${{ matrix.service }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+    
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./services/${{ matrix.service }}
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  # Infrastructure Validation
+  terraform-validate:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: 1.5.7
+    
+    - name: Terraform Format Check
+      working-directory: ./infrastructure/terraform
+      run: terraform fmt -check -recursive
+    
+    - name: Terraform Validate
+      working-directory: ./infrastructure/terraform
+      run: |
+        terraform init -backend=false
+        terraform validate
+
+  # Kubernetes Manifests Validation
+  kubernetes-validate:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Validate Kubernetes manifests
+      uses: instrumenta/kubeval-action@master
+      with:
+        files: infrastructure/k8s/
+
+  # Integration Tests
+  integration-tests:
+    needs: [docker-build]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Docker Compose
+      run: |
+        docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+        sleep 30
+    
+    - name: Run integration tests
+      run: |
+        # Add integration test commands here
+        echo "Running integration tests..."
+        # curl -f http://localhost:8080/health
+        # curl -f http://localhost:8090/health
+    
+    - name: Cleanup
+      if: always()
+      run: docker compose down
+
+  # Deployment to Staging
+  deploy-staging:
+    needs: [integration-tests, terraform-validate, kubernetes-validate]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
+    environment: staging
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Deploy to Staging
+      run: |
+        echo "Deploying to staging environment..."
+        # kubectl apply -f infrastructure/k8s/
+        # helm upgrade --install nphies ./helm/nphies --namespace nphies-staging
+
+  # Deployment to Production
+  deploy-production:
+    needs: [integration-tests, terraform-validate, kubernetes-validate]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Deploy to Production
+      run: |
+        echo "Deploying to production environment..."
+        # kubectl apply -f infrastructure/k8s/
+        # helm upgrade --install nphies ./helm/nphies --namespace nphies-production

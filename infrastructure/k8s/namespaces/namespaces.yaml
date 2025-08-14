@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nphies-core
+  labels:
+    name: nphies-core
+    purpose: core-services
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nphies-data
+  labels:
+    name: nphies-data
+    purpose: data-services
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nphies-ml
+  labels:
+    name: nphies-ml
+    purpose: ml-services
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nphies-integration
+  labels:
+    name: nphies-integration
+    purpose: integration-services
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nphies-security
+  labels:
+    name: nphies-security
+    purpose: security-services
