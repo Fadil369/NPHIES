@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wallet-service
+  namespace: nphies-core
+  labels:
+    app: wallet-service
+    tier: application
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: wallet-service
+  template:
+    metadata:
+      labels:
+        app: wallet-service
+        tier: application
+    spec:
+      containers:
+      - name: wallet-service
+        image: ghcr.io/fadil369/nphies-wallet-service:latest
+        ports:
+        - containerPort: 8093
+        env:
+        - name: PORT
+          value: "8093"
+        - name: DB_HOST
+          value: "postgres-service"
+        - name: REDIS_HOST
+          value: "redis-service"
+        - name: BLOCKCHAIN_NODE_URL
+          value: "http://hyperledger-fabric:7051"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8093
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8093
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wallet-service
+  namespace: nphies-core
+spec:
+  selector:
+    app: wallet-service
+  ports:
+  - port: 8093
+    targetPort: 8093
+  type: ClusterIP

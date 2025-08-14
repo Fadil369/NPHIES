@@ -1,0 +1,67 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nphies-config
+  namespace: nphies-core
+data:
+  # Database Configuration
+  DB_HOST: "postgres-service"
+  DB_PORT: "5432"
+  DB_SSL_MODE: "require"
+  
+  # Redis Configuration
+  REDIS_HOST: "redis-service"
+  REDIS_PORT: "6379"
+  
+  # Kafka Configuration
+  KAFKA_BOOTSTRAP_SERVERS: "kafka-service:9092"
+  
+  # Logging Configuration
+  LOG_LEVEL: "info"
+  LOG_FORMAT: "json"
+  
+  # Feature Flags
+  FEATURE_BLOCKCHAIN_ENABLED: "true"
+  FEATURE_ML_ENABLED: "true"
+  FEATURE_IOT_ENABLED: "true"
+  
+  # Performance Settings
+  CACHE_TTL_SECONDS: "300"
+  RATE_LIMIT_PER_MINUTE: "500"
+  
+  # Privacy Settings
+  PRIVACY_DIFFERENTIAL_ENABLED: "true"
+  PRIVACY_EPSILON: "1.0"
+  PRIVACY_DELTA: "1e-5"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ml-config
+  namespace: nphies-ml
+data:
+  # ML Configuration
+  ML_MODEL_REGISTRY: "http://mlflow-service:5000"
+  ML_FEATURE_STORE: "http://feast-service:6066"
+  ML_BATCH_SIZE: "100"
+  ML_SCORE_THRESHOLD: "0.8"
+  
+  # Model Endpoints
+  FRAUD_DETECTION_MODEL: "fraud-detection-v1"
+  RISK_STRATIFICATION_MODEL: "risk-stratification-v1"
+  COST_FORECAST_MODEL: "cost-forecast-v1"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: blockchain-config
+  namespace: nphies-security
+data:
+  # Blockchain Configuration
+  BLOCKCHAIN_NETWORK: "hyperledger-fabric"
+  BLOCKCHAIN_CHAIN_ID: "nphies-channel"
+  BLOCKCHAIN_GAS_LIMIT: "3000000"
+  
+  # Consensus Configuration
+  CONSENSUS_TYPE: "kafka"
+  ORDERER_ENDPOINT: "orderer.nphies.local:7050"
